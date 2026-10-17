@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "HoverTrans — EN → RU",
+  "version": "0.1.0",
+  "description": "Удерживайте Ctrl и остановите курсор над английским словом на 500 мс: перевод, примеры и произношение.",
+  "minimum_chrome_version": "120",
+  "permissions": ["tts"],
+  "host_permissions": [
+    "https://api.mymemory.translated.net/*",
+    "https://api.dictionaryapi.dev/*"
+  ],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [{
+    "matches": ["http://*/*", "https://*/*"],
+    "js": ["content.js"],
+    "run_at": "document_idle",
+    "all_frames": false
+  }],
+  "incognito": "not_allowed"
+}

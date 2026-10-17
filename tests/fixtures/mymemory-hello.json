@@ -1,0 +1,65 @@
+{
+  "responseData": {
+    "translatedText": "Алло",
+    "match": 1
+  },
+  "quotaFinished": false,
+  "mtLangSupported": null,
+  "responseDetails": "",
+  "responseStatus": 200,
+  "responderId": null,
+  "exception_code": null,
+  "matches": [
+    {
+      "id": "427348660",
+      "segment": "hello",
+      "translation": "Алло",
+      "source": "en-GB",
+      "target": "ru-RU",
+      "quality": 68,
+      "reference": null,
+      "usage-count": 2,
+      "subject": "All",
+      "created-by": "Wikipedia",
+      "last-updated-by": "Wikipedia",
+      "create-date": "2025-01-12 03:07:17",
+      "last-update-date": "2025-01-12 03:07:17",
+      "match": 1,
+      "penalty": 0
+    },
+    {
+      "id": "888470549",
+      "segment": "hello",
+      "translation": "здравствуйте",
+      "source": "en-GB",
+      "target": "ru-RU",
+      "quality": 74,
+      "reference": null,
+      "usage-count": 6,
+      "subject": "",
+      "created-by": "MateCat",
+      "last-updated-by": "MateCat",
+      "create-date": "2023-11-21 11:37:17",
+      "last-update-date": "2023-11-21 11:37:17",
+      "match": 1,
+      "penalty": 0
+    },
+    {
+      "id": "563542958",
+      "segment": "hello",
+      "translation": "hello",
+      "source": "en-US",
+      "target": "ru-RU",
+      "quality": "74",
+      "reference": null,
+      "usage-count": 2,
+      "subject": "All",
+      "created-by": "MateCat",
+      "last-updated-by": "MateCat",
+      "create-date": "2020-07-16 21:17:26",
+      "last-update-date": "2020-07-16 21:17:26",
+      "match": 0.99,
+      "penalty": 0
+    }
+  ]
+}

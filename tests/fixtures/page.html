@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HoverTrans — проверка расширения</title>
+<style>
+  *{box-sizing:border-box}body{font:17px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#273048;background:#f4f5fa;margin:0;padding:60px 8vw}main{max-width:920px;margin:auto}small{font-size:12px;letter-spacing:.08em;color:#7f73ca}h1{font-size:42px;letter-spacing:-.04em;line-height:1.1;margin:16px 0}h2{font-size:17px}p{color:#737d93}.panel{margin-top:28px;background:white;border:1px solid #e2e5ee;padding:30px;border-radius:18px}.words{display:flex;flex-wrap:wrap;gap:30px;font-size:26px;padding:20px 0}a{color:#6958c7}input,textarea{font:inherit;display:block;margin:12px 0;padding:10px;border:1px solid #cdd3e2;border-radius:8px;width:min(100%,400px)}[contenteditable]{padding:10px;border:1px dashed #b9b0dc}footer{margin-top:35px;font-size:12px;color:#8b94a5}.spacer{height:550px}.edge{position:absolute;right:8px;top:8px}.bottom{position:fixed;right:8px;bottom:8px}
+</style>
+<main>
+  <small>HOVERTRANS / ЛОКАЛЬНАЯ ПРОВЕРКА</small>
+  <h1>Перевод прямо под рукой.</h1>
+  <p>Наведите курсор на слово, удерживайте настоящий <strong>Ctrl</strong> и подождите 500 мс.<br>На Mac используйте Control, а не Command. Отпустите Ctrl и перейдите к карточке для произношения.</p>
+  <section class="panel">
+    <h2>Слова для перевода</h2>
+    <div class="words"><span id="hello">hello</span><span id="bank">bank</span><span id="run">run</span><span id="contraction">don't</span><span id="hyphen">well-known</span></div>
+    <p>A <strong>beautiful</strong> morning. The <a href="#bottom">world</a> is full of small discoveries.</p>
+    <p>Нет запросов: русский · 123 · test123.</p>
+    <p>Неизвестное слово для проверки ошибки: qzxwvv.</p>
+  </section>
+  <section class="panel">
+    <h2>Проверка обработчиков расширения в этом браузере</h2>
+    <p>Тест отправляет синтетические события наведения и Ctrl на слова этой страницы. Проверяет настоящий установленный content script и живой API; физическую клавишу Ctrl затем проверьте вручную.</p>
+    <button id="browser-check" style="font:inherit;padding:10px 18px;border:0;border-radius:8px;background:#6958c7;color:white;cursor:pointer">Проверить расширение</button>
+    <pre id="check-result" style="white-space:pre-wrap;font-size:13px" aria-live="polite">Проверка ещё не запущена.</pre>
+    <div id="card-snapshot" aria-label="Последняя карточка из браузерной проверки"></div>
+  </section>
+  <section class="panel">
+    <h2>Поля и редактируемый текст — перевода быть не должно</h2>
+    <input aria-label="Обычное поле" value="hello in input">
+    <input type="password" aria-label="Тестовое поле пароля" value="synthetic-only">
+    <textarea aria-label="Многострочное поле">beautiful morning</textarea>
+    <div contenteditable="true" aria-label="Редактор">hello in editable content</div>
+  </section>
+  <footer>Страница содержит только синтетический текст. Прокрутка и Esc закрывают карточку.</footer>
+  <div class="spacer"></div><p id="bottom">The end of the test page.</p>
+</main>
+<span class="edge">corner</span><span class="bottom">edge</span>
+<script>
+  const output = document.querySelector('#check-result');
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const card = () => document.querySelector('[data-hovertrans-root]');
+  const key = (type, name) => document.dispatchEvent(new KeyboardEvent(type, {
+    key: name, code: name === 'Control' ? 'ControlLeft' : name, ctrlKey: type === 'keydown' && name === 'Control', bubbles: true,
+  }));
+  function move(element, ctrlKey = false) {
+    const r = element.getBoundingClientRect();
+    element.dispatchEvent(new PointerEvent('pointermove', {
+      clientX: r.left + r.width / 2, clientY: r.top + r.height / 2,
+      pointerType: 'mouse', ctrlKey, bubbles: true, composed: true,
+    }));
+  }
+  async function until(check, ms = 6500) {
+    const start = Date.now();
+    while (!check()) { if (Date.now() - start > ms) throw new Error('Тайм-аут браузерной проверки'); await sleep(50); }
+  }
+  document.querySelector('#browser-check').addEventListener('click', async event => {
+    event.target.disabled = true;
+    output.textContent = '';
+    const log = text => output.textContent += text + '\n';
+    const expect = (condition, label) => { if (!condition) throw new Error(label); log('✓ ' + label); };
+    try {
+      key('keydown', 'Escape'); key('keyup', 'Control'); move(document.querySelector('#hello'));
+      await sleep(600); expect(!card(), 'Без Ctrl карточка не появляется');
+      key('keydown', 'Control'); await sleep(350); expect(!card(), 'До 500 мс карточки нет');
+      key('keyup', 'Control'); await sleep(250); expect(!card(), 'Отпускание Ctrl отменяет ожидание');
+      key('keydown', 'Control'); await until(card, 1500); key('keyup', 'Control');
+      expect(Boolean(card()), 'После 500 мс карточка появляется и остаётся без Ctrl');
+      await until(() => card()?.shadowRoot.querySelector('.translation').textContent || card()?.shadowRoot.querySelector('.error'));
+      const root = card().shadowRoot;
+      expect(Boolean(root.querySelector('.translation').textContent), 'Живой перевод: ' + (root.querySelector('.translation').textContent || root.querySelector('.status').textContent));
+      await sleep(3200);
+      log('Примеры: ' + (root.querySelector('.examples').hidden ? 'недоступны (' + (root.querySelector('.examples').dataset.state || 'ожидание') + ')' : root.querySelectorAll('.example').length));
+      log('Произношение: ' + (root.querySelector('.speak').disabled ? 'локальный голос недоступен' : 'локальный английский голос доступен'));
+      if (!root.querySelector('.speak').disabled) {
+        root.querySelector('.speak').click();
+        await until(() => !root.querySelector('.speak').disabled || root.querySelector('.voice-note').textContent, 11000);
+        expect(!root.querySelector('.speak').disabled, 'Кнопка речи: API завершил произношение без ошибки');
+      }
+      const rect = card().getBoundingClientRect();
+      expect(rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight, 'Карточка находится внутри viewport');
+      const snapshot = document.querySelector('#card-snapshot');
+      const shadow = snapshot.shadowRoot || snapshot.attachShadow({mode:'open'});
+      shadow.replaceChildren(...[...root.children].map(node => node.cloneNode(true)));
+      key('keydown', 'Escape'); expect(!card(), 'Esc закрывает карточку');
+      move(document.querySelector('input')); key('keydown', 'Control'); await sleep(600);
+      expect(!card(), 'В поле ввода перевода нет'); key('keyup', 'Control');
+      // Leave a real translated card open for visual review and testing the speech button.
+      move(document.querySelector('#hello')); key('keydown', 'Control'); await until(card, 1500); key('keyup', 'Control');
+      log('Готово. Проверьте кнопку речи и физическую клавишу Ctrl вручную.');
+    } catch (error) { log('ОШИБКА: ' + error.message); key('keyup', 'Control'); }
+    finally { event.target.disabled = false; }
+  });
+</script>
+</html>

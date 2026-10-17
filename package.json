@@ -1,0 +1,14 @@
+{
+  "name": "chrome-hovertrans",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24 <25" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.js",
+    "dev:fixture": "node scripts/fixture-server.mjs",
+    "check:providers": "node scripts/check-providers.mjs"
+  },
+  "devDependencies": { "esbuild": "0.28.2" }
+}

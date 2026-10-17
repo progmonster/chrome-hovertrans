@@ -2,9 +2,9 @@
 
 ## Выбранный подход
 
-Manifest V3, JavaScript ES modules без UI-фреймворка и runtime-зависимостей. Минимальная сборка через esbuild: content script превращается в автономный IIFE, service worker — в поддерживаемый Chrome модуль. Это позволяет тестировать исходные чистые функции обычным `node:test`. Версию Node LTS и esbuild закрепить в HT-02; сейчас конфигурации нет.
+Manifest V3, JavaScript ES modules без UI-фреймворка и runtime-зависимостей. Сборка через esbuild: content script превращается в автономный IIFE, service worker — в модуль Chrome. Исходные чистые функции тестируются через `node:test`. Закреплены Node 24.18.1 и esbuild 0.28.2; зависимости воспроизводятся через `package-lock.json`.
 
-Планируемая структура, не список существующих файлов:
+Реализованная структура:
 
 ```text
 manifest.json               # исходный манифест
@@ -30,7 +30,7 @@ Service worker выполняет сетевые запросы, проверя�
 
 ## Контракт сообщений
 
-Планируемые запросы: `TRANSLATE`, `EXAMPLES`, `SPEAK`, `STOP_SPEECH`, `CANCEL`. Общие поля: `requestId`, валидируемое `word` там, где нужно. Языки и URL не принимаются от страницы: задаются константами в worker. `sender.tab.id` и `sender.frameId` берутся из Chrome, не из payload. Разрешены только сообщения собственного расширения из допустимого контекста.
+Запросы: `TRANSLATE`, `EXAMPLES`, `VOICE_STATUS`, `SPEAK`, `STOP_SPEECH`, `CANCEL`. Общие поля: `requestId`, валидируемое `word` там, где нужно. Языки и URL не принимаются от страницы: задаются в worker. `sender.tab.id` и `sender.frameId` берутся из Chrome, не из payload. Разрешены только сообщения собственного расширения из основного фрейма HTTP(S)-документа. Примеры запрашиваются только для текущего успешного перевода, не чаще одного запроса на поиск.
 
 Перевод: `{ requestId, ok: true, word, translation, alternatives: [], provider }`. Примеры: отдельный ответ `{ requestId, ok: true, examples: [], provider, attribution }`. Ошибка: `{ requestId, ok: false, error: { code } }`. Возможные коды: `NETWORK`, `TIMEOUT`, `RATE_LIMIT`, `NOT_FOUND`, `INVALID_RESPONSE`, `UNAVAILABLE`. Подробный сырой ответ пользователю и в постоянные логи не выводится.
 
@@ -40,7 +40,7 @@ Content script принимает только актуальный `requestId` 
 
 - Запросы идут из worker: content script ограничен origin страницы даже при host permissions. [Сеть расширений](https://developer.chrome.com/docs/extensions/develop/concepts/network-requests).
 - Статический content script подключается к `http://*/*` и `https://*/*`, только основной фрейм. Широкое чтение страниц нужно для наведения без отдельного клика по иконке; объяснить это при установке. `activeTab` сам по себе постоянное наведение не обеспечивает.
-- `host_permissions` содержат только проверенные HTTPS-origin провайдеров из HT-01. Не использовать сетевое `https://*/*`, `cookies`, `history`, `webRequest` или `externally_connectable`. Разрешение `tts` нужно для произношения; `storage` пока не требуется. [Разрешения Chrome](https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions).
+- `host_permissions`: только `https://api.mymemory.translated.net/*` и `https://api.dictionaryapi.dev/*`. Нет сетевого `https://*/*`, `cookies`, `history`, `webRequest` и `externally_connectable`. Разрешение `tts` нужно для произношения; `storage` не используется. [Разрешения Chrome](https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions).
 - Прикладные данные запроса — одно слово и фиксированные языки. Использовать `credentials: 'omit'` и `referrerPolicy: 'no-referrer'`; не передавать URL, заголовок и контекст страницы. Провайдер всё равно видит обычные сетевые метаданные, включая IP.
 - Кэш в памяти worker: до 200 записей, TTL 10 минут, ключ включает провайдера, нормализованное слово и направление. Потеря при остановке worker приемлема. Ошибки не кэшировать как успешный перевод.
 - На вкладку не чаще одного нового поиска в секунду; каждый поиск — максимум один запрос перевода и один запрос примеров. При ограничении показать сообщение; не создавать очередь и скрытые повторы. HTTP 429 включает паузу соответствующего провайдера минимум на 60 секунд либо дольше по корректному `Retry-After`.
@@ -52,8 +52,8 @@ Content script принимает только актуальный `requestId` 
 | --- | --- |
 | ADR-001: MV3, worker и content script | Принято: сетевые разрешения отделены от DOM; архитектура штатная для расширения |
 | ADR-002: JavaScript + esbuild + node:test | Принято: небольшой проект, минимум инструментов, тестируемые модули |
-| ADR-003: адаптер бесплатного перевода | Предварительно: Google — предпочтительный кандидат, пригодность решает HT-01; официального платного fallback нет |
-| ADR-004: примеры отдельно, речь через Chrome TTS | Принято как план: перевод не ждёт словарь; голос не обязан быть голосом Google |
+| ADR-003: MyMemory без ключа и биллинга | Принято, HT-01: живой EN → RU из MV3 worker проверен; точная текущая квота не подтверждена, ограничения обрабатываются; fallback отсутствует |
+| ADR-004: Free Dictionary API и Chrome TTS | Реализовано, HT-06/HT-07: перевод не ждёт словарь, примеры с атрибуцией; используется только локальный английский голос |
 | ADR-005: Markdown и локальный Git | Принято: задачи в TASKS.md, работа обычно прямо в main, без remote/Issues/PR |
 
 Менять решение короткой правкой этой таблицы с причиной и ID задачи. Отдельные ADR-файлы для каждой мелочи не нужны.
